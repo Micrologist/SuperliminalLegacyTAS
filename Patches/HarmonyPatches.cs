@@ -188,6 +188,11 @@ public class TimeTimePatch
     }
 }
 
+// TODO: ref Il2CppSystem.Nullable<int> causes AccessViolationException in the
+// il2cpp_value_box trampoline. HarmonyX cannot safely marshal ref nullable value
+// types in IL2CPP. Needs a native patch or alternative approach (e.g. patching a
+// caller instead, or using a transpiler to avoid the ref parameter).
+/*
 [HarmonyPatch(typeof(LevelInformation), nameof(LevelInformation.GetLoadingSceneIndex))]
 [HarmonyPatch([typeof(string), typeof(Il2CppSystem.Nullable<int>)])]
 public class LoadingScenePatch
@@ -197,6 +202,7 @@ public class LoadingScenePatch
         debugOverride = (Il2CppSystem.Nullable<int>)(-1);
     }
 }
+*/
 
 [HarmonyPatch(typeof(FMODUnity.StudioEventEmitter),"OnEnable")]
 public class EventEmitterPlayPatch
