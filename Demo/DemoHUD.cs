@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Time = UnityEngine.Time;
@@ -13,29 +14,48 @@ namespace SuperliminalTAS.Demo
 {
     class DemoHUD : MonoBehaviour
     {
+        public DemoHUD(IntPtr ptr) : base(ptr) { }
+
         private Text _hudText;
         private DemoRecorder _recorder;
         private bool _showLess = true;
 
-        private readonly Dictionary<string, FieldInfo> _mantleFields = [];
-        private readonly Dictionary<string, FieldInfo> _resizeFields = [];
+        private readonly Dictionary<string, MemberInfo> _mantleMembers = [];
+        private readonly Dictionary<string, MemberInfo> _resizeMembers = [];
 
         private void Awake()
         {
-            SceneManager.sceneLoaded += OnSceneLoadEnsureStatusText;
+            SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
             GetReflectedFields();
+        }
+
+        /// <summary>
+        /// IL2CPP-safe member lookup: Il2CppInterop may expose game class fields as
+        /// either fields or properties. This tries Field first, then Property.
+        /// </summary>
+        private static MemberInfo FindMember(Type type, string name)
+        {
+            return (MemberInfo)AccessTools.Field(type, name)
+                ?? AccessTools.Property(type, name);
+        }
+
+        private static object GetMemberValue(MemberInfo member, object instance)
+        {
+            if (member is FieldInfo fi) return fi.GetValue(instance);
+            if (member is PropertyInfo pi) return pi.GetValue(instance);
+            return null;
         }
 
         private void GetReflectedFields()
         {
             var mantleType = typeof(PlayerLerpMantle);
-            _mantleFields.Add("currentlyMantling", AccessTools.Field(mantleType, "currentlyMantling"));
-            _mantleFields.Add("staying", AccessTools.Field(mantleType, "staying"));
-            _mantleFields.Add("playerJumpedWithoutMantle", AccessTools.Field(mantleType, "playerJumpedWithoutMantle"));
+            _mantleMembers.Add("currentlyMantling", FindMember(mantleType, "currentlyMantling"));
+            _mantleMembers.Add("staying", FindMember(mantleType, "staying"));
+            _mantleMembers.Add("playerJumpedWithoutMantle", FindMember(mantleType, "playerJumpedWithoutMantle"));
 
             var resizeType = typeof(ResizeScript);
-            _resizeFields.Add("isLerpingToPosition", AccessTools.Field(resizeType, "isLerpingToPosition"));
-            _resizeFields.Add("scaleAtMinDistance", AccessTools.Field(resizeType, "scaleAtMinDistance"));
+            _resizeMembers.Add("isLerpingToPosition", FindMember(resizeType, "isLerpingToPosition"));
+            _resizeMembers.Add("scaleAtMinDistance", FindMember(resizeType, "scaleAtMinDistance"));
         }
 
         private void OnSceneLoadEnsureStatusText(Scene _, LoadSceneMode __)
@@ -47,7 +67,7 @@ namespace SuperliminalTAS.Demo
 
             _hudText = CreateStatusText(
                 parent: gameObject.transform,
-                fontName: "NotoMono-Regular",
+                fontName: "SourceSansPro-Regular",
                 fontSize: 26,
                 anchoredPosition: new Vector2(25f, -25f),
                 size: new Vector2(Screen.currentResolution.width / 3f, Screen.currentResolution.height)
@@ -164,7 +184,8 @@ namespace SuperliminalTAS.Demo
             var playerScale = player.transform.localScale.x;
             output += $"S {playerScale:0.00000}x\n";
 
-            if (!player.TryGetComponent<CharacterMotor>(out var playerMotor)) return output;
+            var playerMotor = player.GetComponent<CharacterMotor>();
+            if (playerMotor == null) return output;
 
             var isJumping = playerMotor.jumping.jumping;
             var jumpCd = playerMotor.timeOnGroundBeforeCanJump;
@@ -173,10 +194,15 @@ namespace SuperliminalTAS.Demo
             var playerMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (playerMantle == null) return output;
 
-            bool mantling = (bool)_mantleFields["currentlyMantling"].GetValue(playerMantle);
-            bool staying = (bool)_mantleFields["staying"].GetValue(playerMantle);
+            var mantlingVal = GetMemberValue(_mantleMembers.GetValueOrDefault("currentlyMantling"), playerMantle);
+            var stayingVal = GetMemberValue(_mantleMembers.GetValueOrDefault("staying"), playerMantle);
+            var jumpsWithoutVal = GetMemberValue(_mantleMembers.GetValueOrDefault("playerJumpedWithoutMantle"), playerMantle);
+            if (mantlingVal == null || stayingVal == null || jumpsWithoutVal == null) return output;
+
+            bool mantling = (bool)mantlingVal;
+            bool staying = (bool)stayingVal;
             bool canMantle = playerMantle.canJumpLerp.canLerp;
-            int jumpsWithout = (int)_mantleFields["playerJumpedWithoutMantle"].GetValue(playerMantle);
+            int jumpsWithout = (int)jumpsWithoutVal;
             var groundedTime = Time.time - playerMantle.playerMSC.onGroundTime;
             var mantleResetCD = Mathf.Max(0.1f - groundedTime, 0f);
 
@@ -192,10 +218,11 @@ namespace SuperliminalTAS.Demo
             var player = GameManager.GM.player;
             var playerCamera = GameManager.GM.playerCamera;
 
-            if (playerCamera == null || !playerCamera.TryGetComponent<ResizeScript>(out var resizeScript))
+            var resizeScript = playerCamera != null ? playerCamera.GetComponent<ResizeScript>() : null;
+            if (resizeScript == null)
                 return output;
 
-            var grabbedObject = resizeScript.GetGrabbedObject();
+            var grabbedObject = resizeScript.grabbedObject;
             //var isLerping = (bool)_resizeFields["isLerpingToPosition"].GetValue(resizeScript);
 
             if (grabbedObject != null)
@@ -210,7 +237,8 @@ namespace SuperliminalTAS.Demo
 
                 if (resizeScript.isGrabbing)
                 {
-                    objectMinScale = ((Vector3)(_resizeFields["scaleAtMinDistance"].GetValue(resizeScript))).x;
+                    var scaleVal = GetMemberValue(_resizeMembers.GetValueOrDefault("scaleAtMinDistance"), resizeScript);
+                    objectMinScale = scaleVal != null ? ((Vector3)scaleVal).x : objectScale;
                 }
                 else
                 {
@@ -316,8 +344,9 @@ namespace SuperliminalTAS.Demo
             var text = child.AddComponent<Text>();
             text.fontSize = fontSize;
 
-            var font = Resources.FindObjectsOfTypeAll<Font>().Where((Font font) => font.name == fontName).FirstOrDefault();
-            if (font is not null) text.font = font;
+            // IL2CPP: FindObjectsOfTypeAll returns Il2CppArrayBase which supports LINQ
+            var font = Resources.FindObjectsOfTypeAll<Font>().FirstOrDefault(f => f != null && f.name == fontName);
+            if (font != null) text.font = font;
 
             var rect = text.GetComponent<RectTransform>();
             rect.sizeDelta = size;

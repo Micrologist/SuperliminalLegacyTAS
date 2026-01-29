@@ -19,6 +19,8 @@ internal static class VOProxy
     public static Dictionary<string, int> VoicelineEndFrames = [];
 }
 
+
+/*
 [HarmonyPatch(typeof(MOSTEventVOPlayer), "StartVOandSubtitles")]
 public class StartVOPatch
 {
@@ -48,7 +50,9 @@ public class StartVOPatch
         }
     }
 }
+*/
 
+/*
 [HarmonyPatch(typeof(MOSTEventVOPlayer), nameof(MOSTEventVOPlayer.HasEnded))]
 public class VOHasEndedPatch
 {
@@ -71,3 +75,4 @@ public class VOHasEndedPatch
         }
     }
 }
+*/
