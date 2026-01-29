@@ -7,6 +7,7 @@ using SuperliminalTAS.Demo;
 using SuperliminalTAS.Patches;
 using System.Diagnostics;
 using System.Reflection;
+using UnityEngine;
 
 
 namespace SuperliminalLegacyTAS;
@@ -29,8 +30,13 @@ public class SuperliminalTASPlugin : BasePlugin
 
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
         TimeManagerPatcher.Patch(Process.GetCurrentProcess());
-        var rec = AddComponent<DemoRecorder>();
-        var hud = AddComponent<DemoHUD>();
+
+        // Create a persistent GameObject that survives scene transitions
+        var go = new GameObject("SuperliminalTAS");
+        Object.DontDestroyOnLoad(go);
+        go.hideFlags = HideFlags.HideAndDontSave;
+        go.AddComponent<DemoRecorder>();
+        go.AddComponent<DemoHUD>();
     }
 }
  
