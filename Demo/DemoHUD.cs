@@ -67,7 +67,7 @@ namespace SuperliminalTAS.Demo
 
             _hudText = CreateStatusText(
                 parent: gameObject.transform,
-                fontName: "NotoMono-Regular",
+                fontName: "SourceSansPro-Regular",
                 fontSize: 26,
                 anchoredPosition: new Vector2(25f, -25f),
                 size: new Vector2(Screen.currentResolution.width / 3f, Screen.currentResolution.height)
