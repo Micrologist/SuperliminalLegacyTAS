@@ -52,6 +52,7 @@ public class GetAxisPatch
 // For the legacy IL2CPP build, the obfuscated names will differ.
 // This patch needs updating with the correct IL2CPP method target.
 // Also, "unscaledDeltaTime" may be exposed as a property rather than a field in IL2CPP.
+/*
 [HarmonyPatch]
 public class RewiredDeltaTimePatch
 {
@@ -82,6 +83,8 @@ public class RewiredDeltaTimePatch
             pi.SetValue(null, Time.fixedDeltaTime);
     }
 }
+
+*/
 #endregion
 
 #region RNG Patches
@@ -139,6 +142,7 @@ public class RandomRangeFloatPatch
 // TODO: System.Random.InternalSample is a .NET implementation detail that may not exist
 // in the IL2CPP runtime. If this patch fails, try patching Il2CppSystem.Random.Sample()
 // or Il2CppSystem.Random.Next() instead.
+/*
 [HarmonyPatch(typeof(System.Random), "InternalSample")]
 public class InternalSamplePatch
 {
@@ -147,6 +151,7 @@ public class InternalSamplePatch
         __result = 0;
     }
 }
+*/
 
 #endregion
 
@@ -184,12 +189,12 @@ public class TimeTimePatch
 }
 
 [HarmonyPatch(typeof(LevelInformation), nameof(LevelInformation.GetLoadingSceneIndex))]
-[HarmonyPatch([typeof(string), typeof(int)])]
+[HarmonyPatch([typeof(string), typeof(Il2CppSystem.Nullable<int>)])]
 public class LoadingScenePatch
 {
-    static void Prefix(string scenePath, ref int? debugOverride)
+    static void Prefix(string scenePath, ref Il2CppSystem.Nullable<int> debugOverride)
     {
-        debugOverride = -1;
+        debugOverride = (Il2CppSystem.Nullable<int>)(-1);
     }
 }
 
@@ -238,6 +243,7 @@ public class GBKinematicPatch
     }
 }
 
+/*
 [HarmonyPatch(typeof(WarningController), "Start")]
 public class WarningScreenPatch
 {
@@ -255,3 +261,4 @@ public class WarningScreenPatch
             Debug.LogWarning("[TAS] WarningScreenPatch: Could not find ShowedWarning member on WarningController");
     }
 }
+*/

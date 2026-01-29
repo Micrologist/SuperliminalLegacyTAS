@@ -493,7 +493,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void OpenDemo()
     {
-        var path = _fileDialog.OpenPath();
+        //var path = _fileDialog.OpenPath();
+        var path = "";
         if (string.IsNullOrWhiteSpace(path)) return;
 
         LoadFile(path);
@@ -503,7 +504,8 @@ public sealed class DemoRecorder : MonoBehaviour
     {
         if (_data.FrameCount == 0) return;
 
-        var path = _fileDialog.SavePath();
+        //var path = _fileDialog.SavePath();
+        var path = "";
         if (string.IsNullOrWhiteSpace(path)) return;
 
         try
@@ -717,7 +719,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         // IL2CPP: SceneManager.sceneLoaded expects UnityAction, not System.Action
         UnityAction<Scene, LoadSceneMode> onLoaded = null;
-        onLoaded = (Scene scene, LoadSceneMode mode) =>
+        Action<Scene, LoadSceneMode> action = (scene, mode) =>
         {
             SceneManager.sceneLoaded -= onLoaded;
 
@@ -727,6 +729,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
             this.StartCoroutine(AfterSceneLoadedPhaseLocked(afterLoaded));
         };
+        onLoaded = action;
 
         SceneManager.sceneLoaded += onLoaded;
 

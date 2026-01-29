@@ -217,7 +217,7 @@ namespace SuperliminalTAS.Demo
             if (resizeScript == null)
                 return output;
 
-            var grabbedObject = resizeScript.GetGrabbedObject();
+            var grabbedObject = resizeScript.grabbedObject;
             //var isLerping = (bool)_resizeFields["isLerpingToPosition"].GetValue(resizeScript);
 
             if (grabbedObject != null)
