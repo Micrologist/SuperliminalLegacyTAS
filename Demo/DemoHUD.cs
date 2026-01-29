@@ -194,10 +194,15 @@ namespace SuperliminalTAS.Demo
             var playerMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (playerMantle == null) return output;
 
-            bool mantling = (bool)GetMemberValue(_mantleMembers["currentlyMantling"], playerMantle);
-            bool staying = (bool)GetMemberValue(_mantleMembers["staying"], playerMantle);
+            var mantlingVal = GetMemberValue(_mantleMembers.GetValueOrDefault("currentlyMantling"), playerMantle);
+            var stayingVal = GetMemberValue(_mantleMembers.GetValueOrDefault("staying"), playerMantle);
+            var jumpsWithoutVal = GetMemberValue(_mantleMembers.GetValueOrDefault("playerJumpedWithoutMantle"), playerMantle);
+            if (mantlingVal == null || stayingVal == null || jumpsWithoutVal == null) return output;
+
+            bool mantling = (bool)mantlingVal;
+            bool staying = (bool)stayingVal;
             bool canMantle = playerMantle.canJumpLerp.canLerp;
-            int jumpsWithout = (int)GetMemberValue(_mantleMembers["playerJumpedWithoutMantle"], playerMantle);
+            int jumpsWithout = (int)jumpsWithoutVal;
             var groundedTime = Time.time - playerMantle.playerMSC.onGroundTime;
             var mantleResetCD = Mathf.Max(0.1f - groundedTime, 0f);
 
@@ -232,7 +237,8 @@ namespace SuperliminalTAS.Demo
 
                 if (resizeScript.isGrabbing)
                 {
-                    objectMinScale = ((Vector3)(GetMemberValue(_resizeMembers["scaleAtMinDistance"], resizeScript))).x;
+                    var scaleVal = GetMemberValue(_resizeMembers.GetValueOrDefault("scaleAtMinDistance"), resizeScript);
+                    objectMinScale = scaleVal != null ? ((Vector3)scaleVal).x : objectScale;
                 }
                 else
                 {

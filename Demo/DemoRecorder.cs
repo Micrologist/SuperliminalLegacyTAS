@@ -1,5 +1,6 @@
 ﻿using BepInEx.Unity.IL2CPP.Utils;
 using HarmonyLib;
+using Il2CppInterop.Runtime.Attributes;
 using Rewired;
 using SuperliminalTAS.Patches;
 using System;
@@ -23,6 +24,7 @@ public sealed class DemoRecorder : MonoBehaviour
     /// IL2CPP MonoBehaviour.StartCoroutine only accepts Il2CppSystem.Collections.IEnumerator or string.
     /// This wrapper uses the BepInEx extension to convert managed IEnumerator to IL2CPP-compatible form.
     /// </summary>
+    [HideFromIl2Cpp]
     private new Coroutine StartCoroutine(IEnumerator routine)
         => MonoBehaviourExtensions.StartCoroutine(this, routine);
 
@@ -75,6 +77,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void OnUnloadCleanUp(Scene arg0)
     {
+        if (GameManager.GM == null) return;
         var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
         if(jumpingScript != null && jumpingScript.noClip)
         {
@@ -609,6 +612,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
 
 
+    [HideFromIl2Cpp]
     private IEnumerator ReloadFile()
     {
         if (string.IsNullOrWhiteSpace(_lastOpenedFile))
@@ -698,6 +702,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
     #region Scene Reset
 
+    [HideFromIl2Cpp]
     private IEnumerator ResetLevelStateThen(Action afterLoaded)
     {
         if (_resetting) yield break;
@@ -738,6 +743,7 @@ public sealed class DemoRecorder : MonoBehaviour
         GameManager.GM.GetComponent<SaveAndCheckpointManager>().RestartLevel();
     }
 
+    [HideFromIl2Cpp]
     private IEnumerator AfterSceneLoadedPhaseLocked(Action afterLoaded)
     {
         TASInput.blockAllInput = false;
