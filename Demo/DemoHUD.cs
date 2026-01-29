@@ -16,6 +16,7 @@ namespace SuperliminalTAS.Demo
         private Text _hudText;
         private DemoRecorder _recorder;
         private bool _showLess = true;
+<<<<<<< Updated upstream
 
         private readonly Dictionary<string, FieldInfo> _mantleFields = [];
         private readonly Dictionary<string, FieldInfo> _resizeFields = [];
@@ -36,6 +37,28 @@ namespace SuperliminalTAS.Demo
             var resizeType = typeof(ResizeScript);
             _resizeFields.Add("isLerpingToPosition", AccessTools.Field(resizeType, "isLerpingToPosition"));
             _resizeFields.Add("scaleAtMinDistance", AccessTools.Field(resizeType, "scaleAtMinDistance"));
+=======
+        private void Awake()
+        {
+            SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
+        }
+
+        /// <summary>
+        /// IL2CPP-safe member lookup: Il2CppInterop may expose game class fields as
+        /// either fields or properties. This tries Field first, then Property.
+        /// </summary>
+        private static MemberInfo FindMember(Type type, string name)
+        {
+            return (MemberInfo)AccessTools.Field(type, name)
+                ?? AccessTools.Property(type, name);
+        }
+
+        private static object GetMemberValue(MemberInfo member, object instance)
+        {
+            if (member is FieldInfo fi) return fi.GetValue(instance);
+            if (member is PropertyInfo pi) return pi.GetValue(instance);
+            return null;
+>>>>>>> Stashed changes
         }
 
         private void OnSceneLoadEnsureStatusText(Scene _, LoadSceneMode __)
@@ -173,10 +196,17 @@ namespace SuperliminalTAS.Demo
             var playerMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (playerMantle == null) return output;
 
+<<<<<<< Updated upstream
             bool mantling = (bool)_mantleFields["currentlyMantling"].GetValue(playerMantle);
             bool staying = (bool)_mantleFields["staying"].GetValue(playerMantle);
             bool canMantle = playerMantle.canJumpLerp.canLerp;
             int jumpsWithout = (int)_mantleFields["playerJumpedWithoutMantle"].GetValue(playerMantle);
+=======
+            bool mantling = playerMantle.currentlyMantling;
+            bool staying = playerMantle.staying;
+            bool canMantle = playerMantle.canJumpLerp.canLerp;
+            int jumpsWithout = playerMantle.playerJumpedWithoutMantle;
+>>>>>>> Stashed changes
             var groundedTime = Time.time - playerMantle.playerMSC.onGroundTime;
             var mantleResetCD = Mathf.Max(0.1f - groundedTime, 0f);
 
@@ -195,8 +225,12 @@ namespace SuperliminalTAS.Demo
             if (playerCamera == null || !playerCamera.TryGetComponent<ResizeScript>(out var resizeScript))
                 return output;
 
+<<<<<<< Updated upstream
             var grabbedObject = resizeScript.GetGrabbedObject();
             //var isLerping = (bool)_resizeFields["isLerpingToPosition"].GetValue(resizeScript);
+=======
+            var grabbedObject = resizeScript.grabbedObject;
+>>>>>>> Stashed changes
 
             if (grabbedObject != null)
             {
@@ -210,7 +244,11 @@ namespace SuperliminalTAS.Demo
 
                 if (resizeScript.isGrabbing)
                 {
+<<<<<<< Updated upstream
                     objectMinScale = ((Vector3)(_resizeFields["scaleAtMinDistance"].GetValue(resizeScript))).x;
+=======
+                    objectMinScale = resizeScript.scaleAtMinDistance.x;
+>>>>>>> Stashed changes
                 }
                 else
                 {
