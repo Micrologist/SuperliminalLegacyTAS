@@ -1,12 +1,16 @@
-﻿using HarmonyLib;
+﻿using BepInEx.Unity.IL2CPP.Utils;
+using HarmonyLib;
+using Il2CppInterop.Runtime.Attributes;
 using Rewired;
 using SuperliminalTAS.Patches;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -14,6 +18,16 @@ namespace SuperliminalTAS.Demo;
 
 public sealed class DemoRecorder : MonoBehaviour
 {
+    public DemoRecorder(IntPtr ptr) : base(ptr) { }
+
+    /// <summary>
+    /// IL2CPP MonoBehaviour.StartCoroutine only accepts Il2CppSystem.Collections.IEnumerator or string.
+    /// This wrapper uses the BepInEx extension to convert managed IEnumerator to IL2CPP-compatible form.
+    /// </summary>
+    [HideFromIl2Cpp]
+    private new Coroutine StartCoroutine(IEnumerator routine)
+        => MonoBehaviourExtensions.StartCoroutine(this, routine);
+
     public static DemoRecorder Instance { get; private set; }
 
     public PlaybackState State => _recording ? PlaybackState.Recording : _playingBack ? PlaybackState.Playing : PlaybackState.Stopped;
@@ -57,13 +71,15 @@ public sealed class DemoRecorder : MonoBehaviour
         DemoRecorder.Instance = this;
 
         Application.targetFrameRate = 50;
-        SceneManager.sceneLoaded += OnLoadSetup;
-        SceneManager.sceneUnloaded += OnUnloadCleanUp;
+        SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnLoadSetup;
+        SceneManager.sceneUnloaded += (UnityAction<Scene>)OnUnloadCleanUp;
     }
 
     private void OnUnloadCleanUp(Scene arg0)
     {
-        if(GameManager.GM.TryGetComponent<LevelJumpingScript>(out var jumpingScript) && jumpingScript.noClip)
+        if (GameManager.GM == null) return;
+        var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
+        if(jumpingScript != null && jumpingScript.noClip)
         {
             Destroy(jumpingScript.instanceCameraNoClip);
             jumpingScript.noClip = false;
@@ -195,10 +211,15 @@ public sealed class DemoRecorder : MonoBehaviour
             var prti = pm.GetComponentInChildren<PortalRenderTextureImplementation>();
             if(prti != null)
             {
-                var cullingMaskField = AccessTools.Field(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask");
+                // IL2CPP: Field may be exposed as property by Il2CppInterop
+                var cullingMaskMember = (MemberInfo)AccessTools.Field(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask")
+                                    ?? AccessTools.Property(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask");
 
                 var cullingMask = _showGizmos ? -1 : -32969;
-                cullingMaskField.SetValue(prti, cullingMask);
+                if (cullingMaskMember is FieldInfo fi)
+                    fi.SetValue(prti, cullingMask);
+                else if (cullingMaskMember is PropertyInfo pi)
+                    pi.SetValue(prti, cullingMask);
                 GameManager.GM.playerCamera.cullingMask = cullingMask;
             }
         }
@@ -211,7 +232,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void ToggleNoclip()
     {
-        if (GameManager.GM.player == null || !GameManager.GM.TryGetComponent<LevelJumpingScript>(out var jumpingScript)) return;
+        var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
+        if (GameManager.GM.player == null || jumpingScript == null) return;
 
         if(_createNoClipCamera == null)
         {
@@ -247,7 +269,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private static void TogglePlayerComponents(bool newActive)
     {
-        if (GameManager.GM.player.TryGetComponent<FPSInputController>(out var inputController))
+        var inputController = GameManager.GM.player.GetComponent<FPSInputController>();
+        if (inputController != null)
         {
             inputController.enabled = newActive;
             inputController.motor.enabled = newActive;
@@ -255,12 +278,14 @@ public sealed class DemoRecorder : MonoBehaviour
             inputController.motor.movement.velocity = Vector3.zero;
         }
 
-        if (GameManager.GM.player.TryGetComponent<MouseLook>(out var mouseLookP))
+        var mouseLookP = GameManager.GM.player.GetComponent<MouseLook>();
+        if (mouseLookP != null)
         {
             mouseLookP.enabled = newActive;
         }
 
-        if (GameManager.GM.playerCamera.TryGetComponent<MouseLook>(out var mouseLookC))
+        var mouseLookC = GameManager.GM.playerCamera.GetComponent<MouseLook>();
+        if (mouseLookC != null)
         {
             mouseLookC.enabled = newActive;
         }
@@ -471,7 +496,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void OpenDemo()
     {
-        var path = _fileDialog.OpenPath();
+        //var path = _fileDialog.OpenPath();
+        var path = "";
         if (string.IsNullOrWhiteSpace(path)) return;
 
         LoadFile(path);
@@ -481,7 +507,8 @@ public sealed class DemoRecorder : MonoBehaviour
     {
         if (_data.FrameCount == 0) return;
 
-        var path = _fileDialog.SavePath();
+        //var path = _fileDialog.SavePath();
+        var path = "";
         if (string.IsNullOrWhiteSpace(path)) return;
 
         try
@@ -585,6 +612,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
 
 
+    [HideFromIl2Cpp]
     private IEnumerator ReloadFile()
     {
         if (string.IsNullOrWhiteSpace(_lastOpenedFile))
@@ -656,11 +684,13 @@ public sealed class DemoRecorder : MonoBehaviour
 
         if (SaveGamePatch.lastCheckpoint == null) return -1;
 
-        CheckPoint[] array = global::UnityEngine.Object.FindObjectsOfType<CheckPoint>();
+        // IL2CPP: FindObjectsOfType returns Il2CppArrayBase, convert to managed arrays for sorting
+        CheckPoint[] array = global::UnityEngine.Object.FindObjectsOfType<CheckPoint>().ToArray();
         RoomOrder roomOrder = global::UnityEngine.Object.FindObjectOfType<RoomOrder>();
-        if (roomOrder)
+        if (roomOrder != null)
         {
-            Array.Sort<CheckPoint>(array, (CheckPoint x, CheckPoint y) => Array.IndexOf<Transform>(roomOrder.TopLevelRoomOrder, x.transform.root).CompareTo(Array.IndexOf<Transform>(roomOrder.TopLevelRoomOrder, y.transform.root)));
+            Transform[] topLevelOrder = roomOrder.TopLevelRoomOrder.ToArray();
+            Array.Sort<CheckPoint>(array, (CheckPoint x, CheckPoint y) => Array.IndexOf<Transform>(topLevelOrder, x.transform.root).CompareTo(Array.IndexOf<Transform>(topLevelOrder, y.transform.root)));
             return Array.IndexOf(array, SaveGamePatch.lastCheckpoint);
         }
 
@@ -672,6 +702,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
     #region Scene Reset
 
+    [HideFromIl2Cpp]
     private IEnumerator ResetLevelStateThen(Action afterLoaded)
     {
         if (_resetting) yield break;
@@ -691,24 +722,28 @@ public sealed class DemoRecorder : MonoBehaviour
 
         yield return null;
 
-        void OnLoaded(Scene scene, LoadSceneMode mode)
+        // IL2CPP: SceneManager.sceneLoaded expects UnityAction, not System.Action
+        UnityAction<Scene, LoadSceneMode> onLoaded = null;
+        Action<Scene, LoadSceneMode> action = (scene, mode) =>
         {
-            SceneManager.sceneLoaded -= OnLoaded;
+            SceneManager.sceneLoaded -= onLoaded;
 
             player.controllers.maps.SetMapsEnabled(true, ControllerType.Mouse, "Default", "Default");
             player.controllers.maps.SetMapsEnabled(true, ControllerType.Joystick, "Default", "Default");
             player.controllers.maps.SetMapsEnabled(true, ControllerType.Keyboard, "Default");
 
-            StartCoroutine(AfterSceneLoadedPhaseLocked(afterLoaded));
-        }
+            this.StartCoroutine(AfterSceneLoadedPhaseLocked(afterLoaded));
+        };
+        onLoaded = action;
 
-        SceneManager.sceneLoaded += OnLoaded;
+        SceneManager.sceneLoaded += onLoaded;
 
         GameManager.GM.GetComponent<PlayerSettingsManager>()?.SetMouseSensitivity(1.0f);
 
         GameManager.GM.GetComponent<SaveAndCheckpointManager>().RestartLevel();
     }
 
+    [HideFromIl2Cpp]
     private IEnumerator AfterSceneLoadedPhaseLocked(Action afterLoaded)
     {
         TASInput.blockAllInput = false;
@@ -734,7 +769,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         var player = GameManager.GM.player;
 
-        if(player != null && !player.TryGetComponent<ColliderVisualizer>(out _))
+        if(player != null && player.GetComponent<ColliderVisualizer>() == null)
         {
             player.AddComponent<ColliderVisualizer>();
             _pathProjector = player.AddComponent<PathProjector>();

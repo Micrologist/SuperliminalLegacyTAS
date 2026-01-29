@@ -1,5 +1,4 @@
-﻿using SFB;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 
@@ -7,6 +6,7 @@ namespace SuperliminalTAS.Demo;
 
 public sealed class DemoFileDialog
 {
+    /*
     private readonly StandaloneFileBrowserWindows _fileBrowser = new();
 
     private static readonly ExtensionFilter[] OpenExtensionList =
@@ -42,4 +42,5 @@ public sealed class DemoFileDialog
         var selected = _fileBrowser.SaveFilePanel("Save Recording as", DemoDirectory, name, SaveExtensionList);
         return selected?.Name;
     }
+    */
 }
