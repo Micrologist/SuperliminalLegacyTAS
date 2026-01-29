@@ -17,6 +17,7 @@ namespace SuperliminalTAS.Demo
         private DemoRecorder _recorder;
         private bool _showLess = true;
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
         private readonly Dictionary<string, FieldInfo> _mantleFields = [];
         private readonly Dictionary<string, FieldInfo> _resizeFields = [];
@@ -25,6 +26,11 @@ namespace SuperliminalTAS.Demo
         {
             SceneManager.sceneLoaded += OnSceneLoadEnsureStatusText;
             GetReflectedFields();
+=======
+        private void Awake()
+        {
+            SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
+>>>>>>> Stashed changes
         }
 
         private void GetReflectedFields()
@@ -58,6 +64,9 @@ namespace SuperliminalTAS.Demo
             if (member is FieldInfo fi) return fi.GetValue(instance);
             if (member is PropertyInfo pi) return pi.GetValue(instance);
             return null;
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         }
 
@@ -197,10 +206,17 @@ namespace SuperliminalTAS.Demo
             if (playerMantle == null) return output;
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             bool mantling = (bool)_mantleFields["currentlyMantling"].GetValue(playerMantle);
             bool staying = (bool)_mantleFields["staying"].GetValue(playerMantle);
             bool canMantle = playerMantle.canJumpLerp.canLerp;
             int jumpsWithout = (int)_mantleFields["playerJumpedWithoutMantle"].GetValue(playerMantle);
+=======
+            bool mantling = playerMantle.currentlyMantling;
+            bool staying = playerMantle.staying;
+            bool canMantle = playerMantle.canJumpLerp.canLerp;
+            int jumpsWithout = playerMantle.playerJumpedWithoutMantle;
+>>>>>>> Stashed changes
 =======
             bool mantling = playerMantle.currentlyMantling;
             bool staying = playerMantle.staying;
@@ -226,8 +242,12 @@ namespace SuperliminalTAS.Demo
                 return output;
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             var grabbedObject = resizeScript.GetGrabbedObject();
             //var isLerping = (bool)_resizeFields["isLerpingToPosition"].GetValue(resizeScript);
+=======
+            var grabbedObject = resizeScript.grabbedObject;
+>>>>>>> Stashed changes
 =======
             var grabbedObject = resizeScript.grabbedObject;
 >>>>>>> Stashed changes
@@ -245,7 +265,11 @@ namespace SuperliminalTAS.Demo
                 if (resizeScript.isGrabbing)
                 {
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                     objectMinScale = ((Vector3)(_resizeFields["scaleAtMinDistance"].GetValue(resizeScript))).x;
+=======
+                    objectMinScale = resizeScript.scaleAtMinDistance.x;
+>>>>>>> Stashed changes
 =======
                     objectMinScale = resizeScript.scaleAtMinDistance.x;
 >>>>>>> Stashed changes
