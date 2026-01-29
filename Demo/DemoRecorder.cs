@@ -211,16 +211,7 @@ public sealed class DemoRecorder : MonoBehaviour
             var prti = pm.GetComponentInChildren<PortalRenderTextureImplementation>();
             if(prti != null)
             {
-                // IL2CPP: Field may be exposed as property by Il2CppInterop
-                var cullingMaskMember = (MemberInfo)AccessTools.Field(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask")
-                                    ?? AccessTools.Property(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask");
-
-                var cullingMask = _showGizmos ? -1 : -32969;
-                if (cullingMaskMember is FieldInfo fi)
-                    fi.SetValue(prti, cullingMask);
-                else if (cullingMaskMember is PropertyInfo pi)
-                    pi.SetValue(prti, cullingMask);
-                GameManager.GM.playerCamera.cullingMask = cullingMask;
+                prti.defaultMainCameraCullingMask = _showGizmos ? -1 : -32969;
             }
         }
 
@@ -235,22 +226,9 @@ public sealed class DemoRecorder : MonoBehaviour
         var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
         if (GameManager.GM.player == null || jumpingScript == null) return;
 
-        if(_createNoClipCamera == null)
-        {
-            _createNoClipCamera = typeof(LevelJumpingScript).GetMethod(
-                "CreateNoClipCamera",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-
-            _endNoClip = typeof(LevelJumpingScript).GetMethod(
-                "EndNoClip",
-                BindingFlags.NonPublic | BindingFlags.Instance
-            );
-        }
-
         if (!jumpingScript.noClip)
         {
-            _createNoClipCamera.Invoke(jumpingScript, null);
+            jumpingScript.CreateNoClipCamera();
             var cam = jumpingScript.instanceCameraNoClip.GetComponentInChildren<Camera>();
             cam.backgroundColor = new Color(.1f, .1f, .1f);
             cam.farClipPlane = 100000;
@@ -262,7 +240,7 @@ public sealed class DemoRecorder : MonoBehaviour
         }
         else
         {
-            _endNoClip.Invoke(jumpingScript, null);
+            jumpingScript.EndNoClip();
             TogglePlayerComponents(true);
         }
     }
