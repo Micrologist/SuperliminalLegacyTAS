@@ -1,12 +1,12 @@
-﻿using BepInEx;
+using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
+using Il2CppInterop.Runtime.Injection;
 using SuperliminalTAS.Demo;
 using SuperliminalTAS.Patches;
 using System.Diagnostics;
 using System.Reflection;
-using BepInEx.Unity.IL2CPP.UnityEngine;
 
 
 namespace SuperliminalLegacyTAS;
@@ -18,7 +18,15 @@ public class SuperliminalTASPlugin : BasePlugin
 
     public override void Load()
     {
+        Log = base.Log;
         Log.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+
+        // Register custom MonoBehaviour types with IL2CPP before they can be used
+        ClassInjector.RegisterTypeInIl2Cpp<DemoRecorder>();
+        ClassInjector.RegisterTypeInIl2Cpp<DemoHUD>();
+        ClassInjector.RegisterTypeInIl2Cpp<ColliderVisualizer>();
+        ClassInjector.RegisterTypeInIl2Cpp<PathProjector>();
+
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
         TimeManagerPatcher.Patch(Process.GetCurrentProcess());
         var rec = AddComponent<DemoRecorder>();

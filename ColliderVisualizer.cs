@@ -1,8 +1,10 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
 using UnityEngine;
 
 public class ColliderVisualizer : MonoBehaviour
 {
+    public ColliderVisualizer(IntPtr ptr) : base(ptr) { }
+
     private bool showOnAwake = true;
 
     private GameObject visualRepresentation;

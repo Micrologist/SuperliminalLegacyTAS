@@ -13,29 +13,48 @@ namespace SuperliminalTAS.Demo
 {
     class DemoHUD : MonoBehaviour
     {
+        public DemoHUD(IntPtr ptr) : base(ptr) { }
+
         private Text _hudText;
         private DemoRecorder _recorder;
         private bool _showLess = true;
 
-        private readonly Dictionary<string, FieldInfo> _mantleFields = [];
-        private readonly Dictionary<string, FieldInfo> _resizeFields = [];
+        private readonly Dictionary<string, MemberInfo> _mantleMembers = [];
+        private readonly Dictionary<string, MemberInfo> _resizeMembers = [];
 
         private void Awake()
         {
-            SceneManager.sceneLoaded += OnSceneLoadEnsureStatusText;
+            SceneManager.sceneLoaded += (Action<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
             GetReflectedFields();
+        }
+
+        /// <summary>
+        /// IL2CPP-safe member lookup: Il2CppInterop may expose game class fields as
+        /// either fields or properties. This tries Field first, then Property.
+        /// </summary>
+        private static MemberInfo FindMember(Type type, string name)
+        {
+            return (MemberInfo)AccessTools.Field(type, name)
+                ?? AccessTools.Property(type, name);
+        }
+
+        private static object GetMemberValue(MemberInfo member, object instance)
+        {
+            if (member is FieldInfo fi) return fi.GetValue(instance);
+            if (member is PropertyInfo pi) return pi.GetValue(instance);
+            return null;
         }
 
         private void GetReflectedFields()
         {
             var mantleType = typeof(PlayerLerpMantle);
-            _mantleFields.Add("currentlyMantling", AccessTools.Field(mantleType, "currentlyMantling"));
-            _mantleFields.Add("staying", AccessTools.Field(mantleType, "staying"));
-            _mantleFields.Add("playerJumpedWithoutMantle", AccessTools.Field(mantleType, "playerJumpedWithoutMantle"));
+            _mantleMembers.Add("currentlyMantling", FindMember(mantleType, "currentlyMantling"));
+            _mantleMembers.Add("staying", FindMember(mantleType, "staying"));
+            _mantleMembers.Add("playerJumpedWithoutMantle", FindMember(mantleType, "playerJumpedWithoutMantle"));
 
             var resizeType = typeof(ResizeScript);
-            _resizeFields.Add("isLerpingToPosition", AccessTools.Field(resizeType, "isLerpingToPosition"));
-            _resizeFields.Add("scaleAtMinDistance", AccessTools.Field(resizeType, "scaleAtMinDistance"));
+            _resizeMembers.Add("isLerpingToPosition", FindMember(resizeType, "isLerpingToPosition"));
+            _resizeMembers.Add("scaleAtMinDistance", FindMember(resizeType, "scaleAtMinDistance"));
         }
 
         private void OnSceneLoadEnsureStatusText(Scene _, LoadSceneMode __)
@@ -173,10 +192,10 @@ namespace SuperliminalTAS.Demo
             var playerMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (playerMantle == null) return output;
 
-            bool mantling = (bool)_mantleFields["currentlyMantling"].GetValue(playerMantle);
-            bool staying = (bool)_mantleFields["staying"].GetValue(playerMantle);
+            bool mantling = (bool)GetMemberValue(_mantleMembers["currentlyMantling"], playerMantle);
+            bool staying = (bool)GetMemberValue(_mantleMembers["staying"], playerMantle);
             bool canMantle = playerMantle.canJumpLerp.canLerp;
-            int jumpsWithout = (int)_mantleFields["playerJumpedWithoutMantle"].GetValue(playerMantle);
+            int jumpsWithout = (int)GetMemberValue(_mantleMembers["playerJumpedWithoutMantle"], playerMantle);
             var groundedTime = Time.time - playerMantle.playerMSC.onGroundTime;
             var mantleResetCD = Mathf.Max(0.1f - groundedTime, 0f);
 
@@ -210,7 +229,7 @@ namespace SuperliminalTAS.Demo
 
                 if (resizeScript.isGrabbing)
                 {
-                    objectMinScale = ((Vector3)(_resizeFields["scaleAtMinDistance"].GetValue(resizeScript))).x;
+                    objectMinScale = ((Vector3)(GetMemberValue(_resizeMembers["scaleAtMinDistance"], resizeScript))).x;
                 }
                 else
                 {
@@ -316,8 +335,9 @@ namespace SuperliminalTAS.Demo
             var text = child.AddComponent<Text>();
             text.fontSize = fontSize;
 
-            var font = Resources.FindObjectsOfTypeAll<Font>().Where((Font font) => font.name == fontName).FirstOrDefault();
-            if (font is not null) text.font = font;
+            // IL2CPP: FindObjectsOfTypeAll returns Il2CppArrayBase which supports LINQ
+            var font = Resources.FindObjectsOfTypeAll<Font>().FirstOrDefault(f => f != null && f.name == fontName);
+            if (font != null) text.font = font;
 
             var rect = text.GetComponent<RectTransform>();
             rect.sizeDelta = size;

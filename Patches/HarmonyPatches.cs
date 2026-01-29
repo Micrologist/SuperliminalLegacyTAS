@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using System;
 using System.Reflection;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -47,25 +48,38 @@ public class GetAxisPatch
     }
 }
 
+// TODO: The obfuscated Rewired method name below was for the Mono version.
+// For the legacy IL2CPP build, the obfuscated names will differ.
+// This patch needs updating with the correct IL2CPP method target.
+// Also, "unscaledDeltaTime" may be exposed as a property rather than a field in IL2CPP.
 [HarmonyPatch]
 public class RewiredDeltaTimePatch
 {
-    private static FieldInfo fieldInfo;
+    private static MemberInfo memberInfo;
 
     static MethodBase TargetMethod()
     {
-        return AccessTools.Method(
+        // IL2CPP: Obfuscated names differ from Mono version - this needs the correct IL2CPP target
+        var method = AccessTools.Method(
             "Rewired.ReInput+YADQJtjjsJnFpIRXsWZbJAPaLFd+WJEYbcppSteIUfAbygiJwLxOmigk:AgiDzcfIDplWkWrlRVaBMFfZJjUH");
+        if (method == null)
+            Debug.LogWarning("[TAS] RewiredDeltaTimePatch: Could not find target method. Obfuscated name may differ in IL2CPP build.");
+        return method;
     }
 
     static void Postfix()
     {
-        if (fieldInfo == null)
+        if (memberInfo == null)
         {
-            fieldInfo = AccessTools.Field(typeof(Rewired.ReInput), "unscaledDeltaTime");
+            // IL2CPP: Try field first, then property
+            memberInfo = (MemberInfo)AccessTools.Field(typeof(Rewired.ReInput), "unscaledDeltaTime")
+                      ?? AccessTools.Property(typeof(Rewired.ReInput), "unscaledDeltaTime");
         }
 
-        fieldInfo?.SetValue(null, Time.fixedDeltaTime);
+        if (memberInfo is FieldInfo fi)
+            fi.SetValue(null, Time.fixedDeltaTime);
+        else if (memberInfo is PropertyInfo pi)
+            pi.SetValue(null, Time.fixedDeltaTime);
     }
 }
 #endregion
@@ -122,6 +136,9 @@ public class RandomRangeFloatPatch
     }
 }
 
+// TODO: System.Random.InternalSample is a .NET implementation detail that may not exist
+// in the IL2CPP runtime. If this patch fails, try patching Il2CppSystem.Random.Sample()
+// or Il2CppSystem.Random.Next() instead.
 [HarmonyPatch(typeof(System.Random), "InternalSample")]
 public class InternalSamplePatch
 {
@@ -226,8 +243,15 @@ public class WarningScreenPatch
 {
     static void Prefix()
     {
-        var showedWarningField = AccessTools.Field(typeof(WarningController), "ShowedWarning");
+        // IL2CPP: Field may be exposed as a property by Il2CppInterop
+        var member = (MemberInfo)AccessTools.Field(typeof(WarningController), "ShowedWarning")
+                  ?? AccessTools.Property(typeof(WarningController), "ShowedWarning");
 
-        showedWarningField.SetValue(null, true);
+        if (member is FieldInfo fi)
+            fi.SetValue(null, true);
+        else if (member is PropertyInfo pi)
+            pi.SetValue(null, true);
+        else
+            Debug.LogWarning("[TAS] WarningScreenPatch: Could not find ShowedWarning member on WarningController");
     }
 }

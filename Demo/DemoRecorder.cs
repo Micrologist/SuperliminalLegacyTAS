@@ -1,10 +1,12 @@
-﻿using HarmonyLib;
+﻿using BepInEx.Unity.IL2CPP.Utils;
+using HarmonyLib;
 using Rewired;
 using SuperliminalTAS.Patches;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,6 +16,8 @@ namespace SuperliminalTAS.Demo;
 
 public sealed class DemoRecorder : MonoBehaviour
 {
+    public DemoRecorder(IntPtr ptr) : base(ptr) { }
+
     public static DemoRecorder Instance { get; private set; }
 
     public PlaybackState State => _recording ? PlaybackState.Recording : _playingBack ? PlaybackState.Playing : PlaybackState.Stopped;
@@ -195,10 +199,15 @@ public sealed class DemoRecorder : MonoBehaviour
             var prti = pm.GetComponentInChildren<PortalRenderTextureImplementation>();
             if(prti != null)
             {
-                var cullingMaskField = AccessTools.Field(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask");
+                // IL2CPP: Field may be exposed as property by Il2CppInterop
+                var cullingMaskMember = (MemberInfo)AccessTools.Field(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask")
+                                    ?? AccessTools.Property(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask");
 
                 var cullingMask = _showGizmos ? -1 : -32969;
-                cullingMaskField.SetValue(prti, cullingMask);
+                if (cullingMaskMember is FieldInfo fi)
+                    fi.SetValue(prti, cullingMask);
+                else if (cullingMaskMember is PropertyInfo pi)
+                    pi.SetValue(prti, cullingMask);
                 GameManager.GM.playerCamera.cullingMask = cullingMask;
             }
         }
@@ -656,11 +665,13 @@ public sealed class DemoRecorder : MonoBehaviour
 
         if (SaveGamePatch.lastCheckpoint == null) return -1;
 
-        CheckPoint[] array = global::UnityEngine.Object.FindObjectsOfType<CheckPoint>();
+        // IL2CPP: FindObjectsOfType returns Il2CppArrayBase, convert to managed arrays for sorting
+        CheckPoint[] array = global::UnityEngine.Object.FindObjectsOfType<CheckPoint>().ToArray();
         RoomOrder roomOrder = global::UnityEngine.Object.FindObjectOfType<RoomOrder>();
-        if (roomOrder)
+        if (roomOrder != null)
         {
-            Array.Sort<CheckPoint>(array, (CheckPoint x, CheckPoint y) => Array.IndexOf<Transform>(roomOrder.TopLevelRoomOrder, x.transform.root).CompareTo(Array.IndexOf<Transform>(roomOrder.TopLevelRoomOrder, y.transform.root)));
+            Transform[] topLevelOrder = roomOrder.TopLevelRoomOrder.ToArray();
+            Array.Sort<CheckPoint>(array, (CheckPoint x, CheckPoint y) => Array.IndexOf<Transform>(topLevelOrder, x.transform.root).CompareTo(Array.IndexOf<Transform>(topLevelOrder, y.transform.root)));
             return Array.IndexOf(array, SaveGamePatch.lastCheckpoint);
         }
 
@@ -691,18 +702,20 @@ public sealed class DemoRecorder : MonoBehaviour
 
         yield return null;
 
-        void OnLoaded(Scene scene, LoadSceneMode mode)
+        // IL2CPP: Store delegate reference to ensure same instance is used for subscribe/unsubscribe
+        Action<Scene, LoadSceneMode> onLoaded = null;
+        onLoaded = (Scene scene, LoadSceneMode mode) =>
         {
-            SceneManager.sceneLoaded -= OnLoaded;
+            SceneManager.sceneLoaded -= onLoaded;
 
             player.controllers.maps.SetMapsEnabled(true, ControllerType.Mouse, "Default", "Default");
             player.controllers.maps.SetMapsEnabled(true, ControllerType.Joystick, "Default", "Default");
             player.controllers.maps.SetMapsEnabled(true, ControllerType.Keyboard, "Default");
 
-            StartCoroutine(AfterSceneLoadedPhaseLocked(afterLoaded));
-        }
+            this.StartCoroutine(AfterSceneLoadedPhaseLocked(afterLoaded));
+        };
 
-        SceneManager.sceneLoaded += OnLoaded;
+        SceneManager.sceneLoaded += onLoaded;
 
         GameManager.GM.GetComponent<PlayerSettingsManager>()?.SetMouseSensitivity(1.0f);
 

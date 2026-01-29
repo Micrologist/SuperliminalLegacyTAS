@@ -1,7 +1,10 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class PathProjector : MonoBehaviour
 {
+    public PathProjector(IntPtr ptr) : base(ptr) { }
+
     private float maxDistance = 100f;
     private LayerMask collisionLayers = -1;
     private float radiusMultiplier = 1f;
