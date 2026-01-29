@@ -183,7 +183,8 @@ namespace SuperliminalTAS.Demo
             var playerScale = player.transform.localScale.x;
             output += $"S {playerScale:0.00000}x\n";
 
-            if (!player.TryGetComponent<CharacterMotor>(out var playerMotor)) return output;
+            var playerMotor = player.GetComponent<CharacterMotor>();
+            if (playerMotor == null) return output;
 
             var isJumping = playerMotor.jumping.jumping;
             var jumpCd = playerMotor.timeOnGroundBeforeCanJump;
@@ -211,7 +212,8 @@ namespace SuperliminalTAS.Demo
             var player = GameManager.GM.player;
             var playerCamera = GameManager.GM.playerCamera;
 
-            if (playerCamera == null || !playerCamera.TryGetComponent<ResizeScript>(out var resizeScript))
+            var resizeScript = playerCamera != null ? playerCamera.GetComponent<ResizeScript>() : null;
+            if (resizeScript == null)
                 return output;
 
             var grabbedObject = resizeScript.GetGrabbedObject();

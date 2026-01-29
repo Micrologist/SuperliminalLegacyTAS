@@ -67,7 +67,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void OnUnloadCleanUp(Scene arg0)
     {
-        if(GameManager.GM.TryGetComponent<LevelJumpingScript>(out var jumpingScript) && jumpingScript.noClip)
+        var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
+        if(jumpingScript != null && jumpingScript.noClip)
         {
             Destroy(jumpingScript.instanceCameraNoClip);
             jumpingScript.noClip = false;
@@ -220,7 +221,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void ToggleNoclip()
     {
-        if (GameManager.GM.player == null || !GameManager.GM.TryGetComponent<LevelJumpingScript>(out var jumpingScript)) return;
+        var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
+        if (GameManager.GM.player == null || jumpingScript == null) return;
 
         if(_createNoClipCamera == null)
         {
@@ -256,7 +258,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private static void TogglePlayerComponents(bool newActive)
     {
-        if (GameManager.GM.player.TryGetComponent<FPSInputController>(out var inputController))
+        var inputController = GameManager.GM.player.GetComponent<FPSInputController>();
+        if (inputController != null)
         {
             inputController.enabled = newActive;
             inputController.motor.enabled = newActive;
@@ -264,12 +267,14 @@ public sealed class DemoRecorder : MonoBehaviour
             inputController.motor.movement.velocity = Vector3.zero;
         }
 
-        if (GameManager.GM.player.TryGetComponent<MouseLook>(out var mouseLookP))
+        var mouseLookP = GameManager.GM.player.GetComponent<MouseLook>();
+        if (mouseLookP != null)
         {
             mouseLookP.enabled = newActive;
         }
 
-        if (GameManager.GM.playerCamera.TryGetComponent<MouseLook>(out var mouseLookC))
+        var mouseLookC = GameManager.GM.playerCamera.GetComponent<MouseLook>();
+        if (mouseLookC != null)
         {
             mouseLookC.enabled = newActive;
         }
@@ -747,7 +752,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         var player = GameManager.GM.player;
 
-        if(player != null && !player.TryGetComponent<ColliderVisualizer>(out _))
+        if(player != null && player.GetComponent<ColliderVisualizer>() == null)
         {
             player.AddComponent<ColliderVisualizer>();
             _pathProjector = player.AddComponent<PathProjector>();
