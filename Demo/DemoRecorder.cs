@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -68,8 +69,8 @@ public sealed class DemoRecorder : MonoBehaviour
         DemoRecorder.Instance = this;
 
         Application.targetFrameRate = 50;
-        SceneManager.sceneLoaded += OnLoadSetup;
-        SceneManager.sceneUnloaded += OnUnloadCleanUp;
+        SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnLoadSetup;
+        SceneManager.sceneUnloaded += (UnityAction<Scene>)OnUnloadCleanUp;
     }
 
     private void OnUnloadCleanUp(Scene arg0)
@@ -714,8 +715,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
         yield return null;
 
-        // IL2CPP: Store delegate reference to ensure same instance is used for subscribe/unsubscribe
-        Action<Scene, LoadSceneMode> onLoaded = null;
+        // IL2CPP: SceneManager.sceneLoaded expects UnityAction, not System.Action
+        UnityAction<Scene, LoadSceneMode> onLoaded = null;
         onLoaded = (Scene scene, LoadSceneMode mode) =>
         {
             SceneManager.sceneLoaded -= onLoaded;

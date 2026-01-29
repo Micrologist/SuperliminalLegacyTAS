@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Time = UnityEngine.Time;
@@ -24,7 +25,7 @@ namespace SuperliminalTAS.Demo
 
         private void Awake()
         {
-            SceneManager.sceneLoaded += (Action<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
+            SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
             GetReflectedFields();
         }
 
