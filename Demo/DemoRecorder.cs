@@ -18,6 +18,13 @@ public sealed class DemoRecorder : MonoBehaviour
 {
     public DemoRecorder(IntPtr ptr) : base(ptr) { }
 
+    /// <summary>
+    /// IL2CPP MonoBehaviour.StartCoroutine only accepts Il2CppSystem.Collections.IEnumerator or string.
+    /// This wrapper uses the BepInEx extension to convert managed IEnumerator to IL2CPP-compatible form.
+    /// </summary>
+    private new Coroutine StartCoroutine(IEnumerator routine)
+        => MonoBehaviourExtensions.StartCoroutine(this, routine);
+
     public static DemoRecorder Instance { get; private set; }
 
     public PlaybackState State => _recording ? PlaybackState.Recording : _playingBack ? PlaybackState.Playing : PlaybackState.Stopped;
