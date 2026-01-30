@@ -13,7 +13,7 @@ using UnityEngine;
 namespace SuperliminalLegacyTAS;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
-public class SuperliminalTASPlugin : BasePlugin
+public class SuperliminalLegacyTASPlugin : BasePlugin
 {
     internal static new ManualLogSource Log;
 
