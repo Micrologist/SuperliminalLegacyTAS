@@ -474,8 +474,8 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void OpenDemo()
     {
-        //var path = _fileDialog.OpenPath();
-        var path = "";
+        var path = _fileDialog.OpenPath();
+        
         if (string.IsNullOrWhiteSpace(path)) return;
 
         LoadFile(path);
@@ -485,8 +485,8 @@ public sealed class DemoRecorder : MonoBehaviour
     {
         if (_data.FrameCount == 0) return;
 
-        //var path = _fileDialog.SavePath();
-        var path = "";
+        var path = _fileDialog.SavePath();
+        
         if (string.IsNullOrWhiteSpace(path)) return;
 
         try
@@ -716,7 +716,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         SceneManager.sceneLoaded += onLoaded;
 
-        GameManager.GM.GetComponent<PlayerSettingsManager>()?.SetMouseSensitivity(1.0f);
+        GameManager.GM.GetComponent<PlayerSettingsManager>().SetMouseSensitivity(1f);
 
         GameManager.GM.GetComponent<SaveAndCheckpointManager>().RestartLevel();
     }
@@ -747,10 +747,16 @@ public sealed class DemoRecorder : MonoBehaviour
 
         var player = GameManager.GM.player;
 
+        if(player != null)
+        {
+            GameManager.GM.player.GetComponent<MouseLook>().sensitivityX = 1.0f;
+            GameManager.GM.playerCamera.GetComponent<MouseLook>().sensitivityY = 1.0f;
+        }
+
         if(player != null && player.GetComponent<ColliderVisualizer>() == null)
         {
             player.AddComponent<ColliderVisualizer>();
-            _pathProjector = player.AddComponent<PathProjector>();
+            
 
             var lerpMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (lerpMantle != null)
