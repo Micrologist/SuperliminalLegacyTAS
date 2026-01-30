@@ -14,6 +14,8 @@
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
     <RootNamespace>SuperliminalTAS</RootNamespace>
+    <BaseOutputPath>bin\Modern</BaseOutputPath>
+    <BaseIntermediateOutputPath>obj\Modern\</BaseIntermediateOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
