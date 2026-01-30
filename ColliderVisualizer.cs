@@ -1,12 +1,16 @@
-﻿using System;
+using System;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class ColliderVisualizer : MonoBehaviour
 {
+#if LEGACY
     public ColliderVisualizer(IntPtr ptr) : base(ptr) { }
 
     private bool showOnAwake = true;
+#else
+    [Header("Settings")]
+    [SerializeField] private bool showOnAwake = true;
+#endif
 
     private GameObject visualRepresentation;
 
@@ -65,12 +69,16 @@ public class ColliderVisualizer : MonoBehaviour
         box.transform.localRotation = Quaternion.identity;
         box.transform.localScale = boxCollider.size;
 
-
+#if LEGACY
         var collider = box.GetComponent<Collider>();
         // Disable the collider to stop it from triggering collisions this frame
         collider.enabled = false;
         // Remove the collider from the visualization object
         Destroy(collider);
+#else
+        // Remove the collider from the visualization object
+        Destroy(box.GetComponent<Collider>());
+#endif
 
         // Apply green transparent material
         ApplyTransparentMaterial(box, Color.green);
@@ -123,11 +131,16 @@ public class ColliderVisualizer : MonoBehaviour
         capsule.transform.localRotation = rotation;
         capsule.transform.localScale = scale;
 
+#if LEGACY
         var collider = capsule.GetComponent<Collider>();
         // Disable the collider to stop it from triggering collisions this frame
         collider.enabled = false;
         // Remove the collider from the visualization object
         Destroy(collider);
+#else
+        // Remove the collider from the visualization object
+        Destroy(capsule.GetComponent<Collider>());
+#endif
 
         // Apply red transparent material
         ApplyTransparentMaterial(capsule, Color.red);
@@ -162,11 +175,16 @@ public class ColliderVisualizer : MonoBehaviour
         capsule.transform.localRotation = Quaternion.identity;
         capsule.transform.localScale = scale;
 
+#if LEGACY
         var collider = capsule.GetComponent<Collider>();
         // Disable the collider to stop it from triggering collisions this frame
         collider.enabled = false;
         // Remove the collider from the visualization object
         Destroy(collider);
+#else
+        // Remove the collider from the visualization object
+        Destroy(capsule.GetComponent<Collider>());
+#endif
 
         // Apply blue transparent material for CharacterController
         ApplyTransparentMaterial(capsule, Color.blue);

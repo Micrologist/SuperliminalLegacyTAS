@@ -1,6 +1,8 @@
-﻿using BepInEx.Unity.IL2CPP.Utils;
-using HarmonyLib;
+#if LEGACY
+using BepInEx.Unity.IL2CPP.Utils;
 using Il2CppInterop.Runtime.Attributes;
+#endif
+using HarmonyLib;
 using Rewired;
 using SuperliminalTAS.Patches;
 using System;
@@ -10,7 +12,9 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+#if LEGACY
 using UnityEngine.Events;
+#endif
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -18,6 +22,7 @@ namespace SuperliminalTAS.Demo;
 
 public sealed class DemoRecorder : MonoBehaviour
 {
+#if LEGACY
     public DemoRecorder(IntPtr ptr) : base(ptr) { }
 
     /// <summary>
@@ -27,6 +32,7 @@ public sealed class DemoRecorder : MonoBehaviour
     [HideFromIl2Cpp]
     private new Coroutine StartCoroutine(IEnumerator routine)
         => MonoBehaviourExtensions.StartCoroutine(this, routine);
+#endif
 
     public static DemoRecorder Instance { get; private set; }
 
@@ -71,15 +77,24 @@ public sealed class DemoRecorder : MonoBehaviour
         DemoRecorder.Instance = this;
 
         Application.targetFrameRate = 50;
+#if LEGACY
         SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnLoadSetup;
         SceneManager.sceneUnloaded += (UnityAction<Scene>)OnUnloadCleanUp;
+#else
+        SceneManager.sceneLoaded += OnLoadSetup;
+        SceneManager.sceneUnloaded += OnUnloadCleanUp;
+#endif
     }
 
     private void OnUnloadCleanUp(Scene arg0)
     {
+#if LEGACY
         if (GameManager.GM == null) return;
         var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
         if(jumpingScript != null && jumpingScript.noClip)
+#else
+        if(GameManager.GM.TryGetComponent<LevelJumpingScript>(out var jumpingScript) && jumpingScript.noClip)
+#endif
         {
             Destroy(jumpingScript.instanceCameraNoClip);
             jumpingScript.noClip = false;
@@ -211,7 +226,14 @@ public sealed class DemoRecorder : MonoBehaviour
             var prti = pm.GetComponentInChildren<PortalRenderTextureImplementation>();
             if(prti != null)
             {
+#if LEGACY
                 prti.defaultMainCameraCullingMask = _showGizmos ? -1 : -32969;
+#else
+                var cullingMaskField = AccessTools.Field(typeof(PortalRenderTextureImplementation), "defaultMainCameraCullingMask");
+                var cullingMask = _showGizmos ? -1 : -32969;
+                cullingMaskField.SetValue(prti, cullingMask);
+                GameManager.GM.playerCamera.cullingMask = cullingMask;
+#endif
             }
         }
 
@@ -223,12 +245,33 @@ public sealed class DemoRecorder : MonoBehaviour
 
     private void ToggleNoclip()
     {
+#if LEGACY
         var jumpingScript = GameManager.GM.GetComponent<LevelJumpingScript>();
         if (GameManager.GM.player == null || jumpingScript == null) return;
 
         if (!jumpingScript.noClip)
         {
             jumpingScript.CreateNoClipCamera();
+#else
+        if (GameManager.GM.player == null || !GameManager.GM.TryGetComponent<LevelJumpingScript>(out var jumpingScript)) return;
+
+        if(_createNoClipCamera == null)
+        {
+            _createNoClipCamera = typeof(LevelJumpingScript).GetMethod(
+                "CreateNoClipCamera",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+
+            _endNoClip = typeof(LevelJumpingScript).GetMethod(
+                "EndNoClip",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+        }
+
+        if (!jumpingScript.noClip)
+        {
+            _createNoClipCamera.Invoke(jumpingScript, null);
+#endif
             var cam = jumpingScript.instanceCameraNoClip.GetComponentInChildren<Camera>();
             cam.backgroundColor = new Color(.1f, .1f, .1f);
             cam.farClipPlane = 100000;
@@ -240,13 +283,18 @@ public sealed class DemoRecorder : MonoBehaviour
         }
         else
         {
+#if LEGACY
             jumpingScript.EndNoClip();
+#else
+            _endNoClip.Invoke(jumpingScript, null);
+#endif
             TogglePlayerComponents(true);
         }
     }
 
     private static void TogglePlayerComponents(bool newActive)
     {
+#if LEGACY
         var inputController = GameManager.GM.player.GetComponent<FPSInputController>();
         if (inputController != null)
         {
@@ -267,6 +315,25 @@ public sealed class DemoRecorder : MonoBehaviour
         {
             mouseLookC.enabled = newActive;
         }
+#else
+        if (GameManager.GM.player.TryGetComponent<FPSInputController>(out var inputController))
+        {
+            inputController.enabled = newActive;
+            inputController.motor.enabled = newActive;
+            inputController.motor.grounded = true;
+            inputController.motor.movement.velocity = Vector3.zero;
+        }
+
+        if (GameManager.GM.player.TryGetComponent<MouseLook>(out var mouseLookP))
+        {
+            mouseLookP.enabled = newActive;
+        }
+
+        if (GameManager.GM.playerCamera.TryGetComponent<MouseLook>(out var mouseLookC))
+        {
+            mouseLookC.enabled = newActive;
+        }
+#endif
     }
 
     private static void WithUnlockedCursor(Action action)
@@ -360,6 +427,9 @@ public sealed class DemoRecorder : MonoBehaviour
 
         if (!string.IsNullOrEmpty(_data.LevelId) && SceneManager.GetActiveScene().name != _data.LevelId)
         {
+#if !LEGACY
+            GameManager.GM.TriggerScenePreUnload();
+#endif
             SceneManager.LoadScene(_data.LevelId);
             return;
         }
@@ -475,7 +545,6 @@ public sealed class DemoRecorder : MonoBehaviour
     private void OpenDemo()
     {
         var path = _fileDialog.OpenPath();
-        
         if (string.IsNullOrWhiteSpace(path)) return;
 
         LoadFile(path);
@@ -486,7 +555,6 @@ public sealed class DemoRecorder : MonoBehaviour
         if (_data.FrameCount == 0) return;
 
         var path = _fileDialog.SavePath();
-        
         if (string.IsNullOrWhiteSpace(path)) return;
 
         try
@@ -575,6 +643,9 @@ public sealed class DemoRecorder : MonoBehaviour
             if (!string.IsNullOrEmpty(_data.LevelId) && SceneManager.GetActiveScene().name != _data.LevelId)
             {
                 Debug.Log($"Demo Level: {_data.LevelId}");
+#if !LEGACY
+                GameManager.GM.TriggerScenePreUnload();
+#endif
                 SceneManager.LoadScene(_data.LevelId);
             }
 
@@ -589,8 +660,9 @@ public sealed class DemoRecorder : MonoBehaviour
     }
 
 
-
+#if LEGACY
     [HideFromIl2Cpp]
+#endif
     private IEnumerator ReloadFile()
     {
         if (string.IsNullOrWhiteSpace(_lastOpenedFile))
@@ -662,6 +734,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         if (SaveGamePatch.lastCheckpoint == null) return -1;
 
+#if LEGACY
         // IL2CPP: FindObjectsOfType returns Il2CppArrayBase, convert to managed arrays for sorting
         CheckPoint[] array = global::UnityEngine.Object.FindObjectsOfType<CheckPoint>().ToArray();
         RoomOrder roomOrder = global::UnityEngine.Object.FindObjectOfType<RoomOrder>();
@@ -671,6 +744,15 @@ public sealed class DemoRecorder : MonoBehaviour
             Array.Sort<CheckPoint>(array, (CheckPoint x, CheckPoint y) => Array.IndexOf<Transform>(topLevelOrder, x.transform.root).CompareTo(Array.IndexOf<Transform>(topLevelOrder, y.transform.root)));
             return Array.IndexOf(array, SaveGamePatch.lastCheckpoint);
         }
+#else
+        CheckPoint[] array = global::UnityEngine.Object.FindObjectsOfType<CheckPoint>();
+        RoomOrder roomOrder = global::UnityEngine.Object.FindObjectOfType<RoomOrder>();
+        if (roomOrder)
+        {
+            Array.Sort<CheckPoint>(array, (CheckPoint x, CheckPoint y) => Array.IndexOf<Transform>(roomOrder.TopLevelRoomOrder, x.transform.root).CompareTo(Array.IndexOf<Transform>(roomOrder.TopLevelRoomOrder, y.transform.root)));
+            return Array.IndexOf(array, SaveGamePatch.lastCheckpoint);
+        }
+#endif
 
         return -1;
 
@@ -680,7 +762,9 @@ public sealed class DemoRecorder : MonoBehaviour
 
     #region Scene Reset
 
+#if LEGACY
     [HideFromIl2Cpp]
+#endif
     private IEnumerator ResetLevelStateThen(Action afterLoaded)
     {
         if (_resetting) yield break;
@@ -700,6 +784,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         yield return null;
 
+#if LEGACY
         // IL2CPP: SceneManager.sceneLoaded expects UnityAction, not System.Action
         UnityAction<Scene, LoadSceneMode> onLoaded = null;
         Action<Scene, LoadSceneMode> action = (scene, mode) =>
@@ -719,9 +804,30 @@ public sealed class DemoRecorder : MonoBehaviour
         GameManager.GM.GetComponent<PlayerSettingsManager>().SetMouseSensitivity(1f);
 
         GameManager.GM.GetComponent<SaveAndCheckpointManager>().RestartLevel();
+#else
+        void OnLoaded(Scene scene, LoadSceneMode mode)
+        {
+            SceneManager.sceneLoaded -= OnLoaded;
+
+            player.controllers.maps.SetMapsEnabled(true, ControllerType.Mouse, "Default", "Default");
+            player.controllers.maps.SetMapsEnabled(true, ControllerType.Joystick, "Default", "Default");
+            player.controllers.maps.SetMapsEnabled(true, ControllerType.Keyboard, "Default");
+
+            StartCoroutine(AfterSceneLoadedPhaseLocked(afterLoaded));
+        }
+
+        SceneManager.sceneLoaded += OnLoaded;
+
+        GameManager.GM.GetComponent<PlayerSettingsManager>()?.SetMouseSensitivity(1.0f);
+
+        GameManager.GM.TriggerScenePreUnload();
+        GameManager.GM.GetComponent<SaveAndCheckpointManager>().RestartLevel();
+#endif
     }
 
+#if LEGACY
     [HideFromIl2Cpp]
+#endif
     private IEnumerator AfterSceneLoadedPhaseLocked(Action afterLoaded)
     {
         TASInput.blockAllInput = false;
@@ -747,6 +853,7 @@ public sealed class DemoRecorder : MonoBehaviour
 
         var player = GameManager.GM.player;
 
+#if LEGACY
         if(player != null)
         {
             GameManager.GM.player.GetComponent<MouseLook>().sensitivityX = 1.0f;
@@ -756,7 +863,6 @@ public sealed class DemoRecorder : MonoBehaviour
         if(player != null && player.GetComponent<ColliderVisualizer>() == null)
         {
             player.AddComponent<ColliderVisualizer>();
-            
 
             var lerpMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (lerpMantle != null)
@@ -765,6 +871,20 @@ public sealed class DemoRecorder : MonoBehaviour
                 lerpMantle.transform.parent.gameObject.AddComponent<ColliderVisualizer>();
             }
         }
+#else
+        if(player != null && !player.TryGetComponent<ColliderVisualizer>(out _))
+        {
+            player.AddComponent<ColliderVisualizer>();
+            _pathProjector = player.AddComponent<PathProjector>();
+
+            var lerpMantle = player.GetComponentInChildren<PlayerLerpMantle>();
+            if (lerpMantle != null)
+            {
+                lerpMantle.gameObject.AddComponent<ColliderVisualizer>();
+                lerpMantle.transform.parent.gameObject.AddComponent<ColliderVisualizer>();
+            }
+        }
+#endif
 
         SetTriggerBoxMaterial();
 

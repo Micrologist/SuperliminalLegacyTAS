@@ -1,0 +1,75 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net46</TargetFramework>
+    <AssemblyName>micrologist.superliminaltas</AssemblyName>
+    <Product>SuperliminalTAS</Product>
+    <Description>A plugin for modern versions of Superliminal to allow the creation of tool-assisted speedruns.</Description>
+    <Version>0.1.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <RestoreAdditionalProjectSources>
+      https://api.nuget.org/v3/index.json;
+      https://nuget.bepinex.dev/v3/index.json;
+      https://nuget.samboy.dev/v3/index.json
+    </RestoreAdditionalProjectSources>
+    <RootNamespace>SuperliminalTAS</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Modern\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Core" Version="5.*" IncludeAssets="compile" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="1.*" />
+    <PackageReference Include="HarmonyX" Version="2.*" IncludeAssets="compile" />
+  </ItemGroup>
+
+  <!--
+    Modern (Mono) managed references.
+    Point these HintPaths to your modern Superliminal managed DLLs directory.
+    These are the standard Mono assemblies (no Il2Cpp* prefix).
+  -->
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>SuperliminalModernManaged\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>SuperliminalModernManaged\Assembly-CSharp-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="FMODUnity">
+      <HintPath>SuperliminalModernManaged\FMODUnity.dll</HintPath>
+    </Reference>
+    <Reference Include="Rewired_Core">
+      <HintPath>SuperliminalModernManaged\Rewired_Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Rewired_Windows">
+      <HintPath>SuperliminalModernManaged\Rewired_Windows.dll</HintPath>
+    </Reference>
+    <Reference Include="StandaloneFileBrowser">
+      <HintPath>SuperliminalModernManaged\StandaloneFileBrowser.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>SuperliminalModernManaged\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>SuperliminalModernManaged\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>SuperliminalModernManaged\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>SuperliminalModernManaged\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>SuperliminalModernManaged\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>SuperliminalModernManaged\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>SuperliminalModernManaged\UnityEngine.UIModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

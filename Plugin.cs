@@ -1,18 +1,20 @@
 using BepInEx;
 using BepInEx.Logging;
-using BepInEx.Unity.IL2CPP;
 using HarmonyLib;
-using Il2CppInterop.Runtime.Injection;
 using SuperliminalTAS.Demo;
 using SuperliminalTAS.Patches;
 using System.Diagnostics;
 using System.Reflection;
 using UnityEngine;
+#if LEGACY
+using BepInEx.Unity.IL2CPP;
+using Il2CppInterop.Runtime.Injection;
+#endif
 
-
-namespace SuperliminalLegacyTAS;
+namespace SuperliminalTAS;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
+#if LEGACY
 public class SuperliminalTASPlugin : BasePlugin
 {
     internal static new ManualLogSource Log;
@@ -39,4 +41,16 @@ public class SuperliminalTASPlugin : BasePlugin
         go.AddComponent<DemoHUD>();
     }
 }
- 
+#else
+public class SuperliminalTASPlugin : BaseUnityPlugin
+{
+    private void Awake()
+    {
+        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
+        Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
+        TimeManagerPatcher.Patch(Process.GetCurrentProcess());
+        this.gameObject.AddComponent<DemoRecorder>();
+        this.gameObject.AddComponent<DemoHUD>();
+    }
+}
+#endif

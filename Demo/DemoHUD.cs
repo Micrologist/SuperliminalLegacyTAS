@@ -1,11 +1,13 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Rewired;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+#if LEGACY
 using UnityEngine.Events;
+#endif
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Time = UnityEngine.Time;
@@ -14,7 +16,34 @@ namespace SuperliminalTAS.Demo
 {
     class DemoHUD : MonoBehaviour
     {
+#if LEGACY
         public DemoHUD(IntPtr ptr) : base(ptr) { }
+#else
+        private static readonly Dictionary<string, FieldInfo> _mantleFields = new()
+        {
+            ["currentlyMantling"] = AccessTools.Field(typeof(PlayerLerpMantle), "currentlyMantling"),
+            ["staying"] = AccessTools.Field(typeof(PlayerLerpMantle), "staying"),
+            ["canJumpLerp"] = AccessTools.Field(typeof(PlayerLerpMantle), "canJumpLerp"),
+            ["playerJumpedWithoutMantle"] = AccessTools.Field(typeof(PlayerLerpMantle), "playerJumpedWithoutMantle"),
+            ["playerMSC"] = AccessTools.Field(typeof(PlayerLerpMantle), "playerMSC"),
+        };
+
+        private static readonly Dictionary<string, FieldInfo> _resizeFields = new()
+        {
+            ["grabbedObject"] = AccessTools.Field(typeof(ResizeScript), "grabbedObject"),
+            ["scaleAtMinDistance"] = AccessTools.Field(typeof(ResizeScript), "scaleAtMinDistance"),
+        };
+
+        private static readonly FieldInfo _canLerpField = AccessTools.Field(
+            AccessTools.Field(typeof(PlayerLerpMantle), "canJumpLerp").FieldType,
+            "canLerp"
+        );
+
+        private static readonly FieldInfo _onGroundTimeField = AccessTools.Field(
+            AccessTools.Field(typeof(PlayerLerpMantle), "playerMSC").FieldType,
+            "onGroundTime"
+        );
+#endif
 
         private Text _hudText;
         private DemoRecorder _recorder;
@@ -22,19 +51,24 @@ namespace SuperliminalTAS.Demo
 
         private void Awake()
         {
+#if LEGACY
             SceneManager.sceneLoaded += (UnityAction<Scene, LoadSceneMode>)OnSceneLoadEnsureStatusText;
+#else
+            SceneManager.sceneLoaded += OnSceneLoadEnsureStatusText;
+#endif
         }
 
         private void OnSceneLoadEnsureStatusText(Scene _, LoadSceneMode __)
         {
             if (_hudText != null) return;
 
-            //var mainCanvas = GameObject.Find("UI_PAUSE_MENU")?.transform.Find("Canvas");
-            //if (mainCanvas == null) return;
-
             _hudText = CreateStatusText(
                 parent: gameObject.transform,
+#if LEGACY
                 fontName: "SourceSansPro-Regular",
+#else
+                fontName: "NotoMono-Regular",
+#endif
                 fontSize: 26,
                 anchoredPosition: new Vector2(25f, -25f),
                 size: new Vector2(Screen.currentResolution.width / 3f, Screen.currentResolution.height)
@@ -151,8 +185,12 @@ namespace SuperliminalTAS.Demo
             var playerScale = player.transform.localScale.x;
             output += $"S {playerScale:0.00000}x\n";
 
+#if LEGACY
             var playerMotor = player.GetComponent<CharacterMotor>();
             if (playerMotor == null) return output;
+#else
+            if (!player.TryGetComponent<CharacterMotor>(out var playerMotor)) return output;
+#endif
 
             var isJumping = playerMotor.jumping.jumping;
             var jumpCd = playerMotor.timeOnGroundBeforeCanJump;
@@ -161,11 +199,21 @@ namespace SuperliminalTAS.Demo
             var playerMantle = player.GetComponentInChildren<PlayerLerpMantle>();
             if (playerMantle == null) return output;
 
+#if LEGACY
             bool mantling = playerMantle.currentlyMantling;
             bool staying = playerMantle.staying;
             bool canMantle = playerMantle.canJumpLerp.canLerp;
             int jumpsWithout = playerMantle.playerJumpedWithoutMantle;
             var groundedTime = Time.time - playerMantle.playerMSC.onGroundTime;
+#else
+            bool mantling = (bool)_mantleFields["currentlyMantling"].GetValue(playerMantle);
+            bool staying = (bool)_mantleFields["staying"].GetValue(playerMantle);
+            var canJumpLerp = _mantleFields["canJumpLerp"].GetValue(playerMantle);
+            bool canMantle = (bool)_canLerpField.GetValue(canJumpLerp);
+            int jumpsWithout = (int)_mantleFields["playerJumpedWithoutMantle"].GetValue(playerMantle);
+            var playerMSC = _mantleFields["playerMSC"].GetValue(playerMantle);
+            var groundedTime = Time.time - (float)_onGroundTimeField.GetValue(playerMSC);
+#endif
             var mantleResetCD = Mathf.Max(0.1f - groundedTime, 0f);
 
             output += $"M {(mantling ? 1 : 0)} {(staying ? 1 : 0)} {(canMantle ? 1 : 0)} {jumpsWithout} {mantleResetCD:0.00}\n";
@@ -180,11 +228,18 @@ namespace SuperliminalTAS.Demo
             var player = GameManager.GM.player;
             var playerCamera = GameManager.GM.playerCamera;
 
+#if LEGACY
             var resizeScript = playerCamera != null ? playerCamera.GetComponent<ResizeScript>() : null;
             if (resizeScript == null)
                 return output;
 
             var grabbedObject = resizeScript.grabbedObject;
+#else
+            if (playerCamera == null || !playerCamera.TryGetComponent<ResizeScript>(out var resizeScript))
+                return output;
+
+            var grabbedObject = (GameObject)_resizeFields["grabbedObject"].GetValue(resizeScript);
+#endif
 
             if (grabbedObject != null)
             {
@@ -198,8 +253,11 @@ namespace SuperliminalTAS.Demo
 
                 if (resizeScript.isGrabbing)
                 {
+#if LEGACY
                     objectMinScale = resizeScript.scaleAtMinDistance.x;
-
+#else
+                    objectMinScale = ((Vector3)_resizeFields["scaleAtMinDistance"].GetValue(resizeScript)).x;
+#endif
                 }
                 else
                 {
@@ -305,7 +363,6 @@ namespace SuperliminalTAS.Demo
             var text = child.AddComponent<Text>();
             text.fontSize = fontSize;
 
-            // IL2CPP: FindObjectsOfTypeAll returns Il2CppArrayBase which supports LINQ
             var font = Resources.FindObjectsOfTypeAll<Font>().FirstOrDefault(f => f != null && f.name == fontName);
             if (font != null) text.font = font;
 

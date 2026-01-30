@@ -8,13 +8,18 @@
     <Version>0.1.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
+    <DefineConstants>$(DefineConstants);LEGACY</DefineConstants>
     <RestoreAdditionalProjectSources>
       https://api.nuget.org/v3/index.json;
       https://nuget.bepinex.dev/v3/index.json;
       https://nuget.samboy.dev/v3/index.json
     </RestoreAdditionalProjectSources>
-    <RootNamespace>SuperliminalLegacyTAS</RootNamespace>
+    <RootNamespace>SuperliminalTAS</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Modern\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.*" IncludeAssets="compile" />

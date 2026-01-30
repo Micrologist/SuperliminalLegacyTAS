@@ -1,11 +1,12 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Linq;
+
+#if LEGACY
 using System.Runtime.InteropServices;
 using System.Text;
 
-// If you already have this from SFB, keep yours.
-// I'm including a minimal compatible version.
+// Minimal ExtensionFilter for Win32 file dialogs
 public readonly struct ExtensionFilter
 {
     public readonly string Name;
@@ -17,19 +18,38 @@ public readonly struct ExtensionFilter
         Extensions = extensions ?? Array.Empty<string>();
     }
 }
+#else
+using SFB;
+#endif
+
+namespace SuperliminalTAS.Demo;
 
 public sealed class DemoFileDialog
 {
+#if !LEGACY
+    private readonly StandaloneFileBrowserWindows _fileBrowser = new();
+#endif
+
     private static readonly ExtensionFilter[] OpenExtensionList =
     {
+#if LEGACY
         new("CSV File (*.csv)", "csv"),
         new("All Files (*.*)", "*")
+#else
+        new("CSV File (*.csv)", "csv"),
+        new("All Files", "*")
+#endif
     };
 
     private static readonly ExtensionFilter[] SaveExtensionList =
     {
+#if LEGACY
         new("CSV File (*.csv)", "csv"),
         new("All Files (*.*)", "*")
+#else
+        new("CSV File (*.csv)", "csv"),
+        new("All Files", "*")
+#endif
     };
 
     public string DemoDirectory { get; }
@@ -37,22 +57,29 @@ public sealed class DemoFileDialog
     public DemoFileDialog()
     {
         DemoDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "demos");
-        Directory.CreateDirectory(DemoDirectory);
+        if (!Directory.Exists(DemoDirectory))
+            Directory.CreateDirectory(DemoDirectory);
     }
 
     public string OpenPath()
     {
+#if LEGACY
         return Win32FileDialogs.OpenFile(
             title: "Open TAS File",
             initialDirectory: DemoDirectory,
             filters: OpenExtensionList,
             defaultExtension: "csv"
         );
+#else
+        var selected = _fileBrowser.OpenFilePanel("Open TAS File", DemoDirectory, OpenExtensionList, false);
+        return selected.FirstOrDefault()?.Name;
+#endif
     }
 
     public string SavePath()
     {
         var name = $"SuperliminalTAS-{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.csv";
+#if LEGACY
         return Win32FileDialogs.SaveFile(
             title: "Save Recording as",
             initialDirectory: DemoDirectory,
@@ -60,9 +87,14 @@ public sealed class DemoFileDialog
             filters: SaveExtensionList,
             defaultExtension: "csv"
         );
+#else
+        var selected = _fileBrowser.SaveFilePanel("Save Recording as", DemoDirectory, name, SaveExtensionList);
+        return selected?.Name;
+#endif
     }
 }
 
+#if LEGACY
 internal static class Win32FileDialogs
 {
     // --- Public API ---
@@ -172,7 +204,7 @@ internal static class Win32FileDialogs
         var ofn = new OPENFILENAMEW
         {
             lStructSize = Marshal.SizeOf<OPENFILENAMEW>(),
-            hwndOwner = IntPtr.Zero, // If you want, you can set to Unity window handle.
+            hwndOwner = IntPtr.Zero,
             hInstance = IntPtr.Zero,
             lpstrFilter = BuildWin32FilterString(filters),
             lpstrCustomFilter = null,
@@ -197,7 +229,6 @@ internal static class Win32FileDialogs
     private static string BuildWin32FilterString(ExtensionFilter[] filters)
     {
         // Win32 expects: "Display\0Pattern\0Display\0Pattern\0\0"
-        // Example pattern: "*.csv" or "*.*" or "*.csv;*.txt"
         if (filters == null || filters.Length == 0)
             return "All Files (*.*)\0*.*\0\0";
 
@@ -258,3 +289,4 @@ internal static class Win32FileDialogs
         return new string(chars);
     }
 }
+#endif
