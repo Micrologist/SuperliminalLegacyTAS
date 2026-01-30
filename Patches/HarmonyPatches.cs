@@ -157,7 +157,7 @@ public class InternalSamplePatch
 
 
 
-[HarmonyPatch(typeof(PlayerLerpMantle), "LerpPlayer")]
+[HarmonyPatch(typeof(PlayerLerpMantle), nameof(PlayerLerpMantle.LerpPlayer))]
 public class LerpPlayerMantlePatch
 {
     static void Prefix()
@@ -268,3 +268,33 @@ public class WarningScreenPatch
     }
 }
 */
+
+[HarmonyPatch(typeof(UnityEngine.Debug))]
+[HarmonyPatch(nameof(Debug.LogError), new[] { typeof(Il2CppSystem.Object) })]
+public class Debug_LogError_FilterPatch
+{
+    // Change this to whatever exact message you want to suppress.
+    private const string SuppressedMessage = "No save name found for current scene.";
+
+    private static bool Prefix(Il2CppSystem.Object message)
+    {
+        // Only suppress if the message is a string and matches exactly
+        if (message != null && message.ToString() == SuppressedMessage)
+        {
+                return false; // skip original => don't print
+        }
+
+        return true;
+    }
+}
+
+[HarmonyPatch(typeof(PauseMenu), "OnApplicationFocus")]
+public class ApplicationFocusPatch
+{
+    static bool Prefix(bool focus)
+    {
+        // Only run when focus is true
+        return focus;
+    }
+}
+
