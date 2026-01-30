@@ -16,6 +16,7 @@
     <RootNamespace>SuperliminalTAS</RootNamespace>
     <BaseOutputPath>bin\Modern</BaseOutputPath>
     <BaseIntermediateOutputPath>obj\Modern\</BaseIntermediateOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>

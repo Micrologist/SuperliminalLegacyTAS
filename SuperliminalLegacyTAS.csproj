@@ -17,6 +17,7 @@
     <RootNamespace>SuperliminalTAS</RootNamespace>
     <BaseOutputPath>bin\Legacy</BaseOutputPath>
     <BaseIntermediateOutputPath>obj\Legacy\</BaseIntermediateOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
