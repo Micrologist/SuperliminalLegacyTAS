@@ -1,5 +1,6 @@
 ﻿using System;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 public class ColliderVisualizer : MonoBehaviour
 {
@@ -64,8 +65,12 @@ public class ColliderVisualizer : MonoBehaviour
         box.transform.localRotation = Quaternion.identity;
         box.transform.localScale = boxCollider.size;
 
+
+        var collider = box.GetComponent<Collider>();
+        // Disable the collider to stop it from triggering collisions this frame
+        collider.enabled = false;
         // Remove the collider from the visualization object
-        Destroy(box.GetComponent<Collider>());
+        Destroy(collider);
 
         // Apply green transparent material
         ApplyTransparentMaterial(box, Color.green);
@@ -118,8 +123,11 @@ public class ColliderVisualizer : MonoBehaviour
         capsule.transform.localRotation = rotation;
         capsule.transform.localScale = scale;
 
+        var collider = capsule.GetComponent<Collider>();
+        // Disable the collider to stop it from triggering collisions this frame
+        collider.enabled = false;
         // Remove the collider from the visualization object
-        Destroy(capsule.GetComponent<Collider>());
+        Destroy(collider);
 
         // Apply red transparent material
         ApplyTransparentMaterial(capsule, Color.red);
@@ -154,8 +162,11 @@ public class ColliderVisualizer : MonoBehaviour
         capsule.transform.localRotation = Quaternion.identity;
         capsule.transform.localScale = scale;
 
+        var collider = capsule.GetComponent<Collider>();
+        // Disable the collider to stop it from triggering collisions this frame
+        collider.enabled = false;
         // Remove the collider from the visualization object
-        Destroy(capsule.GetComponent<Collider>());
+        Destroy(collider);
 
         // Apply blue transparent material for CharacterController
         ApplyTransparentMaterial(capsule, Color.blue);
